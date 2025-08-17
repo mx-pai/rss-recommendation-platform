@@ -5,6 +5,8 @@ from app.core.database import engine
 from app.models import user, content_source, article
 from app.routers import auth
 from app.routers import sources
+from app.routers import articles
+
 
 # 数据库表创建
 user.Base.metadata.create_all(bind=engine)
@@ -26,6 +28,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(sources.router)
+app.include_router(articles.router)
 
 @app.get("/")
 async def root():
