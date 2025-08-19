@@ -6,6 +6,8 @@ from app.schemas.source import SourceCreate, SourceUpdate, SourceResponse, Sourc
 from app.models.content_source import ContentSource
 from app.routers.auth import get_current_user
 from app.models.user import User
+from app.services.fetch_service import FetchService
+
 
 router = APIRouter(prefix="/sources", tags=["RSS源管理"])
 
@@ -126,4 +128,28 @@ def toggle_source_status(
     db.commit()
     db.refresh(source)
     return {"message": f"RSS源已{'启用' if source.is_active else '禁用'}"} #type: ignore
+
+
+@router.post("/source_id}/fetch")
+async def fetch_service_content(
+        source_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+        ):
+    """手动抓取指定内容"""
+    fetch_service = FetchService()
+    result = await fetch_service.fetch_source(source_id, db)
+    return result
+
+@router.post("/fetch-all")
+async def fetch_all_source(
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+        ):
+    """抓取所有启用的内容源"""
+    fetch_service = FetchService()
+    result = await fetch_service.fetch_all_actice_sources(db)
+    return result
+
+
 

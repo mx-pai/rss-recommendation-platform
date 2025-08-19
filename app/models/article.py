@@ -18,6 +18,9 @@ class Article(Base):
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())   
+    images = Column(Text, comment="图片URL列表（JSON格式）")
+    summary = Column(Text, comment="文章摘要")
+    word_count = Column(Integer, default=0, comment="字数统计")
 
     source = relationship("ContentSource", back_populates="articles")
 

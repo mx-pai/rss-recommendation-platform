@@ -1,5 +1,5 @@
 from pydantic import BaseModel, HttpUrl
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class ArticleBase(BaseModel):
@@ -9,17 +9,23 @@ class ArticleBase(BaseModel):
     author: Optional[str] = None
     published_at: Optional[datetime] = None
     source_type: Optional[str] = None
+    images: Optional[List[str]] = None
+    summary: Optional[str] = None
+    word_count: int = 0
 
 class ArticleCreate(ArticleBase):
     source_id: int
 
-class AeticleUpdate(BaseModel):
+class ArticleUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     author: Optional[str] = None
     published_at: Optional[datetime] = None
     source_type: Optional[str] = None
     is_read: Optional[bool] = None
+    images: Optional[List[str]] = None
+    summary: Optional[str] = None
+    word_count: int = 0
 
 class ArticleResponse(ArticleBase):
     id: int
@@ -39,6 +45,9 @@ class ArticleListResponse(BaseModel):
     is_read: bool
     published_at: Optional[datetime] = None
     created_at: datetime
+    images: Optional[List[str]] = None
+    summary: Optional[str] = None
+    word_count: int = 0
 
     class Config:
         from_attributes = True

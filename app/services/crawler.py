@@ -69,6 +69,8 @@ class ModernWebCrawler:
 
             images = await self._extract_images(page, config)
 
+            summary = self._generate_summary(content)
+
             return {
                     'title': title,
                     'content': content,
@@ -76,11 +78,16 @@ class ModernWebCrawler:
                     'published_at': published_at,
                     'url': url,
                     'images': images,
-                    'domain': urlparse(url).netloc
+                    'domain': urlparse(url).netloc,
+                    'summary': summary
                     }
         except Exception as e:
             logger.error(f"提取文章内容失败：{str(e)}")
             return {}
+
+    def _generate_summary(self, content: str) -> str:
+        """生成文章摘要（暂时pass，后续用LLM优化）"""
+        return ""
 
     async def _extract_title(self, page, config: Optional[Dict] = None) -> str:
         """提取标题"""
