@@ -20,8 +20,7 @@ class ContentSource(Base):
     last_fetch = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+ 
+    articles = relationship("Article", back_populates="source", cascade="all, delete-orphan", passive_deletes=True)
     
-    
-    articles = relationship("Article", back_populates="source")
-
 

@@ -8,6 +8,7 @@ dependencies = [
     "alembic>=1.16.4",
     "bcrypt==4.0.1",
     "beautifulsoup4>=4.13.4",
+    "bleach>=6.2.0",
     "celery>=5.5.3",
     "email-validator>=2.2.0",
     "fastapi>=0.116.1",

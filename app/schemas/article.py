@@ -1,6 +1,7 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, validator
 from typing import Optional, List
 from datetime import datetime
+import json
 
 class ArticleBase(BaseModel):
     title: str
@@ -12,6 +13,19 @@ class ArticleBase(BaseModel):
     images: Optional[List[str]] = None
     summary: Optional[str] = None
     word_count: int = 0
+
+    @validator("images", pre=True)
+    def parse_image(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return []
+        return v
 
 class ArticleCreate(ArticleBase):
     source_id: int
@@ -48,6 +62,19 @@ class ArticleListResponse(BaseModel):
     images: Optional[List[str]] = None
     summary: Optional[str] = None
     word_count: int = 0
+
+    @validator("images", pre=True)
+    def parse_image(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return []
+        return v
 
     class Config:
         from_attributes = True

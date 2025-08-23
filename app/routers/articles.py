@@ -1,20 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+import logging
 from app.core.database import get_db
-from app.schemas.article import AeticleUpdate, ArticleResponse, ArticleCreate, ArticleListResponse
+from app.schemas.article import ArticleUpdate, ArticleResponse, ArticleCreate, ArticleListResponse
 from app.models.article import Article
 from app.models.content_source import ContentSource
 from app.routers.auth import get_current_user
 from app.models.user import User
 from app.core.crud_utils import get_object_or_404
+
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/articles", tags=["文章管理"])
 
 
 @router.post("/", response_model=ArticleResponse)
 def create_article(
         article_data: ArticleCreate,
-        db, Session = Depends(get_db),
+        db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
     """创建新文章"""
@@ -28,11 +31,11 @@ def create_article(
             source_id=article_data.source_id,
             source_type=article_data.source_type or source.type
             )
-    db.add(db.article)
+    db.add(db_article)
     db.commit()
-    db.refresh(db.article)
+    db.refresh(db_article)
 
-    return db.article
+    return db_article
 
 @router.get("/{article_id}", response_model=ArticleResponse)
 def get_article(
@@ -44,10 +47,61 @@ def get_article(
     article = get_object_or_404(db, Article, article_id, "文章不存在")
     return article
 
+
+@router.get("/", response_model=List[ArticleListResponse])
+def get_articles(
+        skip: int = Query(0, ge=0, description="跳过的记录数"),
+        limit: int = Query(20, ge=1, le=100, description="返回的记录数"),
+        source_id: Optional[int] = Query(None, description="按内容源筛选"),
+        is_read: Optional[bool] = Query(None, description="按阅读状态筛选"),
+        category: Optional[str] = Query(None, description="按分类筛选"),
+        search: Optional[str] = Query(None, description="搜索标题或内容"),
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+        ):
+    """获取文章列表，支持分页和筛选"""
+    try:
+        query = db.query(Article).join(ContentSource, Article.source_id == ContentSource.id)
+
+        # 应用筛选条件
+        if source_id is not None:
+            query = query.filter(Article.source_id == source_id)
+
+        if is_read is not None:
+            query = query.filter(Article.is_read == is_read)
+
+        if category:
+            query = query.filter(ContentSource.category == category)
+
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                (Article.title.ilike(search_term)) |
+                (Article.content.ilike(search_term)) |
+                (Article.summary.ilike(search_term))
+            )
+
+        # 按创建时间倒序排列
+        query = query.order_by(Article.created_at.desc())
+
+        # 应用分页
+        total = query.count()
+        articles = query.offset(skip).limit(limit).all()
+
+        logger.info(f"查询文章列表: 总数={total}, 返回={len(articles)}, 筛选条件: source_id={source_id}, is_read={is_read}, category={category}, search={search}")
+
+        return articles
+
+    except Exception as e:
+        logger.error(f"查询文章列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="查询文章列表失败")
+
+
+
 @router.put("/{article_id}", response_model=ArticleResponse)
 def update_article(
         article_id: int,
-        article_data: AeticleUpdate,
+        article_data: ArticleUpdate,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
@@ -59,17 +113,17 @@ def update_article(
 
     db.commit()
     db.refresh(article)
-    
+
     return article
 
 @router.delete("/{article_id}")
 def delete_article(
-        articel_id: int,
+        article_id: int,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
     """删除文章"""
-    article = get_object_or_404(db, Article, articel_id, "文章不存在")
+    article = get_object_or_404(db, Article, article_id, "文章不存在")
     db.delete(article)
     db.commit()
     return {"message": "文章删除成功"}
@@ -83,7 +137,7 @@ def toggle_article_read_status(
     """切换文章阅读状态"""
     article = get_object_or_404(db, Article, article_id, "文章不存在")
 
-    article.is_read = not article.isread
+    article.is_read = not article.is_read
     db.commit()
     db.refresh(article)
 

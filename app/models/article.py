@@ -13,7 +13,7 @@ class Article(Base):
     url = Column(String(500), unique=True, nullable=False)
     author = Column(String(100), comment="作者")
     published_at = Column(DateTime(timezone=True))
-    source_id = Column(Integer, ForeignKey("content_sources.id"))
+    source_id = Column(Integer, ForeignKey("content_sources.id", onupdate="CASCADE"), nullable=False, comment="来源ID")
     source_type = Column(String(50), comment="来源类型：rss, manual, api")
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -23,6 +23,8 @@ class Article(Base):
     word_count = Column(Integer, default=0, comment="字数统计")
 
     source = relationship("ContentSource", back_populates="articles")
+
+
 
 
                        

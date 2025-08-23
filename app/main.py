@@ -6,7 +6,12 @@ from app.models import user, content_source, article
 from app.routers import auth
 from app.routers import sources
 from app.routers import articles
+import logging
 
+logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s%(name)s:%(message)s"
+        )
 
 # 数据库表创建
 user.Base.metadata.create_all(bind=engine)

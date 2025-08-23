@@ -9,7 +9,7 @@ from app.models.user import User
 from app.services.fetch_service import FetchService
 
 
-router = APIRouter(prefix="/sources", tags=["RSS源管理"])
+router = APIRouter(prefix="/sources", tags=["内容源管理"])
 
 @router.post("/", response_model=SourceResponse)
 def content_source(
@@ -17,7 +17,7 @@ def content_source(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
-    """创建新的RSS源"""
+    """创建新的内容源"""
     if db.query(ContentSource).filter(ContentSource.url == str(source_data.url)).first():
         raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -48,7 +48,7 @@ def get_sources(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
-    """获取RSS源列表"""
+    """获取内容源列表"""
     sources = db.query(ContentSource).offset(skip).limit(limit).all()
     return sources
 
@@ -58,12 +58,12 @@ def get_source(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
-    """获取单个RSS源详情"""
+    """获取单个内容源详情"""
     source = db.query(ContentSource).filter(ContentSource.id == source_id).first()
     if not source:
         raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="RSS源不存在"
+                detail="内容源不存在"
                 )
     return source
 
@@ -74,12 +74,12 @@ def update_source(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
-    """更新RSS源"""
+    """更新内容源"""
     source = db.query(ContentSource).filter(ContentSource.id == source_id).first()
     if not source:
         raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="RSS源不存在"
+                detail="内容源不存在"
                 )
     update_data = source_data.dict(exclude_unset=True)
     for field, value in update_data.items():
@@ -99,17 +99,17 @@ def delete_source(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
-    """删除RSS源"""
+    """删除内容源"""
     source = db.query(ContentSource).filter(ContentSource.id == source_id).first()
     if not source:
         raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="RSS源不存在"
+                detail="内容源不存在"
                 )
     db.delete(source)
     db.commit()
 
-    return {"message": "RSS源删除成功"}
+    return {"message": "内容源删除成功"}
 
 @router.patch("/{source_id}/toggle")
 def toggle_source_status(
@@ -117,20 +117,20 @@ def toggle_source_status(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
         ):
-    """切换RSS源状态（启用/禁用）"""
+    """切换内容源状态（启用/禁用）"""
     source = db.query(ContentSource).filter(ContentSource.id == source_id).first()
     if not source:
         raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="RSS源不存在"
+                detail="内容源不存在"
                 )
     source.is_active = not bool(source.is_active) # type: ignore
     db.commit()
     db.refresh(source)
-    return {"message": f"RSS源已{'启用' if source.is_active else '禁用'}"} #type: ignore
+    return {"message": f"内容源已{'启用' if source.is_active else '禁用'}"} #type: ignore
 
 
-@router.post("/source_id}/fetch")
+@router.post("/{source_id}/fetch")
 async def fetch_service_content(
         source_id: int,
         db: Session = Depends(get_db),
@@ -148,7 +148,7 @@ async def fetch_all_source(
         ):
     """抓取所有启用的内容源"""
     fetch_service = FetchService()
-    result = await fetch_service.fetch_all_actice_sources(db)
+    result = await fetch_service.fetch_all_active_sources(db)
     return result
 
 
