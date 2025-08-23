@@ -73,7 +73,7 @@ class FetchService:
                             'author': full_article_data.get('author') or rss_article.get('author', '未知作者'),
                             'published_at': full_article_data.get('published_at') or rss_article.get('published_at'),
                             'images': full_article_data.get('images') or rss_article.get('images', []),
-                            'summary': full_article_data.get('summary') or self._generate_summary_from_content(full_article_data.get('content', '')),
+                            'summary': full_article_data.get('summary') ,
                             'domain': full_article_data.get('domain') or rss_article.get('domain', '')
                         }
 
@@ -108,24 +108,6 @@ class FetchService:
             logger.error(f"RSS 抓取失败: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def _generate_summary_from_content(self, content: str, max_length: int = 150) -> str:
-        """从HTML内容生成纯文本摘要"""
-        if not content:
-            return ""
-
-        try:
-            # 使用BeautifulSoup提取纯文本
-            soup = BeautifulSoup(content, 'html.parser')
-            text = soup.get_text(separator=' ', strip=True)
-
-            # 截取前max_length个字符
-            if len(text) <= max_length:
-                return text
-            else:
-                return text[:max_length].rstrip() + "..."
-        except Exception as e:
-            logger.error(f"生成摘要失败: {str(e)}")
-            return ""
 
 
     async def _fetch_webpage_source(self, source: ContentSource, db: Session) -> Dict:
@@ -189,9 +171,15 @@ class FetchService:
                 if (existing_article.word_count or 0) == 0 and text: # type: ignore[assignment]
                     existing_article.word_count = len(text) # type: ignore[assignment]
                     updated = True
-                if (not existing_article.summary) and article_data.get('summary'): # type: ignore[assignment]
-                    existing_article.summary = article_data.get('summary') or '' # type: ignore[assignment]
-                    updated = True
+
+                new_summary = article_data.get('summary', '')
+                if new_summary and new_summary != existing_article.summary:
+                # 如果新摘要是AI生成的,就更新
+                    if len(new_summary) > 50 and len(new_summary) < 500:
+                        existing_article.summary = new_summary
+                        updated = True
+                        logger.info(f"更新AI摘要: {new_summary}")
+            
                 if  html: # type: ignore[assignment]
                     existing_article.content = html
                     updated = True

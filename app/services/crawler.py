@@ -10,6 +10,7 @@ import json
 from urllib.parse import urlparse
 import bleach
 import re
+from app.services.ai_service import AIService
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class ModernWebCrawler:
     def __init__(self, headless: bool = True, timeout: int = 30000):
         self.timeout = timeout
         self.headless = headless
+        self.ai_service = AIService()
 
 
     async def crawl_webpage(self, url: str, config: Optional[Dict] = None) -> Optional[Dict]:
@@ -81,7 +83,7 @@ class ModernWebCrawler:
 
             images = await self._extract_images(page, config)
 
-            summary = self._generate_summary(content)
+            summary = await self._generate_summary(content)
 
             return {
                     'title': title,
@@ -97,9 +99,45 @@ class ModernWebCrawler:
             logger.error(f"提取文章内容失败：{str(e)}")
             return {}
 
-    def _generate_summary(self, content: str) -> str:
-        """生成文章摘要（暂时pass，后续用LLM优化）"""
-        return ""
+    async def _generate_summary(self, content: str) -> str:
+        """AI生成文章摘要"""
+        try:
+            # 直接调用AI服务
+            ai_summary = await self.ai_service.generate_summary(content, max_length=500)
+            if ai_summary:
+                logger.info(f"AI摘要生成成功，长度: {len(ai_summary)}")
+                return ai_summary
+            else:
+                logger.warning("AI摘要生成失败，使用基础摘要")
+                return self._generate_fallback_summary(content, max_length=150)
+                
+        except Exception as e:
+            logger.warning(f"AI摘要生成失败: {str(e)}，使用基础摘要")
+            return self._generate_fallback_summary(content, max_length=150)
+
+    def _generate_fallback_summary(self, content: str, max_length: int = 150) -> str:
+        """基础摘要（备用方案）"""
+        if not content:
+            return ""
+        
+        try:
+            soup = BeautifulSoup(content, 'html.parser')
+            text = soup.get_text(separator=' ', strip=True)
+            
+            if len(text) <= max_length:
+                return text
+            
+            truncated = text[:max_length]
+            last_period = truncated.rfind('。')
+            if last_period > max_length * 0.7:
+                return truncated[:last_period + 1]
+            else:
+                return truncated + "..."
+                
+        except Exception as e:
+            logger.error(f"基础摘要生成失败: {str(e)}")
+            return ""
+
 
     async def _extract_title(self, page, config: Optional[Dict] = None) -> str:
         """提取标题"""
