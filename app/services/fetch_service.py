@@ -179,7 +179,7 @@ class FetchService:
                         existing_article.summary = new_summary
                         updated = True
                         logger.info(f"更新AI摘要: {new_summary}")
-            
+
                 if  html: # type: ignore[assignment]
                     existing_article.content = html
                     updated = True

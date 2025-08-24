@@ -21,6 +21,9 @@ class Article(Base):
     images = Column(Text, comment="图片URL列表（JSON格式）")
     summary = Column(Text, comment="文章摘要")
     word_count = Column(Integer, default=0, comment="字数统计")
+    keywords = Column(Text, comment="关键词JSON数组")
+    category = Column(String(100), comment="文章分类")
+
 
     source = relationship("ContentSource", back_populates="articles")
 

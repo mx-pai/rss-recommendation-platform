@@ -83,12 +83,27 @@ class ModernWebCrawler:
 
             images = await self._extract_images(page, config)
 
-            summary = await self._generate_summary(content)
+            summary = await self.ai_service.generate_summary(
+                    content=content,
+                    max_length=500
+                    )
+
+            category = await self.ai_service.classify_article(
+                    title=title,
+                    content=content
+                    )
+
+            keyword = await self.ai_service.extract_keywords(
+                    content=content,
+                    max_keywords=5
+                    )
 
             return {
                     'title': title,
                     'content': content,
                     'author': author or '未知作者',  # 如果作者为None，使用默认值
+                    'keyword': keyword,
+                    'category': category,
                     'published_at': published_at,
                     'url': url,
                     'images': images,
@@ -110,7 +125,7 @@ class ModernWebCrawler:
             else:
                 logger.warning("AI摘要生成失败，使用基础摘要")
                 return self._generate_fallback_summary(content, max_length=150)
-                
+
         except Exception as e:
             logger.warning(f"AI摘要生成失败: {str(e)}，使用基础摘要")
             return self._generate_fallback_summary(content, max_length=150)
@@ -119,21 +134,21 @@ class ModernWebCrawler:
         """基础摘要（备用方案）"""
         if not content:
             return ""
-        
+
         try:
             soup = BeautifulSoup(content, 'html.parser')
             text = soup.get_text(separator=' ', strip=True)
-            
+
             if len(text) <= max_length:
                 return text
-            
+
             truncated = text[:max_length]
             last_period = truncated.rfind('。')
             if last_period > max_length * 0.7:
                 return truncated[:last_period + 1]
             else:
                 return truncated + "..."
-                
+
         except Exception as e:
             logger.error(f"基础摘要生成失败: {str(e)}")
             return ""
@@ -814,7 +829,7 @@ class RSSCrawler:
                         'published_at': self._parse_date(entry.get('published', '')), #type: ignore
                         'domain': urlparse(link).netloc if link else '', #type: ignore
                         'images': images,
-                        'summary': "" #占位
+                        'summary': ""#占位
                         }
                 articles.append(article_data)
 
