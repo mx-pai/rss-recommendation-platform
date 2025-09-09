@@ -65,8 +65,42 @@ class ModernWebCrawler:
     async def _wait_for_content(self, page, config: Optional[Dict] = None):
         """加载内容"""
         try:
-            await page.wait_for_selector('h1, .title, .article-title, .post-title', timeout=10000)
-            await page.wait_for_selector('article, .content, .post-content, .article-content', timeout=10000)
+
+            await page.wait_for_load_state('domcontentloaded', timeout=5000)
+            logger.info("页面DOM加载完成")
+
+            title_selectors = [
+                'h1', '.title', '.article-title', '.post-title',
+                '.main h1', '#content h1', '.container h1',
+                'h1, h2, h3'
+            ]
+
+            content_selectors = [
+                'article', '.content', '.post-content', '.article-content',
+                '.main', '#content', '.container', '.wrapper',
+                '.tutorial-content', '.code-example', '.example',
+                'main', 'section', 'div', 'p'
+            ]
+
+            for selector in title_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=2000)
+                    logger.info(f"找到标题选择器: {selector}")
+                    break
+                except:
+                    continue
+
+            # 尝试找到内容
+            for selector in content_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=2000)
+                    logger.info(f"找到内容选择器: {selector}")
+                    break
+                except:
+                    continue
+
+            logger.warning("未找到任何内容选择器，但继续尝试提取")
+
         except Exception as e:
             logger.warning(f"等待内容超时：{str(e)}")
 
@@ -101,7 +135,7 @@ class ModernWebCrawler:
             return {
                     'title': title,
                     'content': content,
-                    'author': author or '未知作者',  # 如果作者为None，使用默认值
+                    'author': author or '未知作者',
                     'keyword': keyword,
                     'category': category,
                     'published_at': published_at,
@@ -151,7 +185,7 @@ class ModernWebCrawler:
 
         except Exception as e:
             logger.error(f"基础摘要生成失败: {str(e)}")
-            return ""
+        return ""
 
 
     async def _extract_title(self, page, config: Optional[Dict] = None) -> str:
@@ -234,6 +268,7 @@ class ModernWebCrawler:
     async def _extract_author(self, page, config: Optional[Dict] = None) -> Optional[str]:
         """提取作者信息 - 从多个位置寻找"""
         try:
+            # 1. 先尝试从meta标签获取作者
             meta_selectors = [
                 'meta[name="author"]',
                 'meta[property="article:author"]',
@@ -249,6 +284,7 @@ class ModernWebCrawler:
                         logger.info(f"从meta标签找到作者: {author}")
                         return author.strip()
 
+            # 2. 从页面元素获取作者
             author_selectors = [
                 '.author',
                 '.byline',
@@ -276,14 +312,21 @@ class ModernWebCrawler:
                 except:
                     continue
 
+            # 3. 尝试从JavaScript获取作者信息
             try:
-                author_from_js = await page.evaluate("""
+                author_from_js = await page.evaluate(r"""
                     () => {
-                        #TODO
-                        }
-                                                     """)
+                        // 尝试从各种可能的JavaScript变量中获取作者
+                        if (window.author) return window.author;
+                        if (window.articleAuthor) return window.articleAuthor;
+                        if (window.postAuthor) return window.postAuthor;
+                        return null;
+                    }
+                """)
+                if author_from_js:
+                    logger.info(f"从JavaScript找到作者: {author_from_js}")
+                    return author_from_js
             except:
-                #TODO
                 pass
 
             logger.warning("未找到作者信息")
@@ -449,7 +492,7 @@ class ModernWebCrawler:
 
                 except Exception as e:
                     logger.debug(f"属性选择器 {selector} 失败: {str(e)}")
-                    continue
+                continue
             return None
         except Exception as e:
             logger.debug(f"提取属性作者失败: {str(e)}")
@@ -662,10 +705,10 @@ class ModernWebCrawler:
         return None
 
     async def _extract_images(self, page, config: Optional[Dict] = None) -> List[str]:
-        """提取文章图片 优先寻找封面图"""
+        """提取图片"""
+        images = []
         try:
-            images = []
-
+            # 1. 优先获取OG图片和Twitter图片
             og_image = await page.query_selector('meta[property="og:image"]')
             if og_image:
                 og_src = await og_image.get_attribute('content')
@@ -678,7 +721,8 @@ class ModernWebCrawler:
                 if twitter_src and not twitter_src.startswith('data:') and twitter_src not in images:
                     images.append(twitter_src)
 
-            content_images = await page.query_selector_all('article img, .content img, .post-content img, .article-content img, .entry-content img')
+            # 2. 从内容中提取图片
+            content_images = await page.query_selector_all('article img, .content img, .post-content img, .article-content img')
             for img in content_images:
                 src = await img.get_attribute('src')
                 if src and not src.startswith('data:') and src not in images:
@@ -697,6 +741,7 @@ class ModernWebCrawler:
                 if len(images) >= 10:  # 限制图片数量
                     break
 
+            # 3. 如果没有找到图片，尝试备用选择器
             if not images:
                 fallback_images = await page.query_selector_all('img[src*="cover"], img[src*="hero"], img[src*="banner"]')
                 for img in fallback_images:
@@ -706,7 +751,6 @@ class ModernWebCrawler:
 
             # 去重并限制数量
             unique_images = list(dict.fromkeys(images))
-
             return unique_images[:10]  # 最多返回10张图片
 
         except Exception as e:
