@@ -6,11 +6,13 @@ from app.models import user, content_source, article
 from app.routers import auth
 from app.routers import sources
 from app.routers import articles
+from app.routers import admin
+from app.services.scheduler import scheduler_service
 import logging
 
 logging.basicConfig(
         level=logging.INFO,
-        format="%(levelname)s%(name)s:%(message)s"
+        format="[%(levelname)s] %(name)s - %(message)s"
         )
 
 # 数据库表创建
@@ -34,6 +36,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(sources.router)
 app.include_router(articles.router)
+app.include_router(admin.router)
 
 @app.get("/")
 async def root():
@@ -50,7 +53,49 @@ async def api_status():
             "status": "running",
             "database": "PostgreSQL",
             "cache": "Redis",
-            "models": ["User", "ContentSource", "Atticle"]
+            "scheduler": scheduler_service.get_status()["running"],
+            "models": ["User", "ContentSource", "Article"]
             }
+
+
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时执行"""
+    logger = logging.getLogger(__name__)
+    logger.info("=" * 60)
+    logger.info("应用启动中...")
+    logger.info("数据库: PostgreSQL")
+    logger.info("缓存: Redis")
+    logger.info("=" * 60)
+
+    # 启动定时任务调度器
+    try:
+        scheduler_service.start()
+        logger.info("定时任务调度器启动成功")
+    except Exception as e:
+        logger.error(f"定时任务调度器启动失败: {str(e)}")
+
+    logger.info("=" * 60)
+    logger.info("应用启动完成！")
+    logger.info("API文档: http://localhost:8000/docs")
+    logger.info("=" * 60)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时执行"""
+    logger = logging.getLogger(__name__)
+    logger.info("=" * 60)
+    logger.info("应用关闭中...")
+
+    # 停止定时任务调度器
+    try:
+        scheduler_service.stop()
+        logger.info("定时任务调度器已停止")
+    except Exception as e:
+        logger.error(f"停止调度器失败: {str(e)}")
+
+    logger.info("再见！")
+    logger.info("=" * 60)
 
 

@@ -88,6 +88,7 @@ class ModernWebCrawler:
                     logger.info(f"找到标题选择器: {selector}")
                     break
                 except:
+                    logger.warning(f"未找到标题选择器: {selector}")
                     continue
 
             # 尝试找到内容
@@ -97,6 +98,7 @@ class ModernWebCrawler:
                     logger.info(f"找到内容选择器: {selector}")
                     break
                 except:
+                    logger.warning(f"未找到内容选择器: {selector}")
                     continue
 
             logger.warning("未找到任何内容选择器，但继续尝试提取")
@@ -216,6 +218,7 @@ class ModernWebCrawler:
                         if title and title.strip():
                             return title.strip()
             except:
+                logger.warning(f"未找到标题选择器: {selector}")
                 continue
 
         return "无标题"
@@ -262,6 +265,7 @@ class ModernWebCrawler:
                     else:
                         logger.warning(f"⚠️ 选择器 {selector} 的内容太短，长度: {len(content.strip()) if content else 0}")
             except:
+                logger.warning(f"选择器 {selector} 提取失败")
                 continue
         return ""
 
@@ -577,7 +581,7 @@ class ModernWebCrawler:
             if author_from_js:
                 cleaned_author = self._clean_author_text(author_from_js)
                 if cleaned_author:
-                    logger.info(f"✅ 从JavaScript找到作者: {cleaned_author}")
+                    logger.info(f" 从JavaScript找到作者: {cleaned_author}")
                     return cleaned_author
             return None
         except Exception as e:
@@ -700,6 +704,7 @@ class ModernWebCrawler:
                         if date_str:
                             return self._parse_date(date_str)
             except:
+                logger.warning(f"选择器 {selector} 提取失败")
                 continue
 
         return None
@@ -847,7 +852,14 @@ class RSSCrawler:
     def crawl_rss(self, rss_url: str) -> List[Dict]:
         """抓取RSS内容"""
         try:
+            logger.info(f"开始抓取RSS: {rss_url}")
             feed = feedparser.parse(rss_url)
+
+            logger.info(f"RSS解析结果 - 状态: {feed.get('status', 'unknown')}, 条目数: {len(feed.entries)}")
+
+            if not feed.entries:
+                logger.warning(f"RSS源没有条目: {rss_url}")
+                return []
 
             articles = []
             for entry in feed.entries:
@@ -876,7 +888,9 @@ class RSSCrawler:
                         'summary': ""#占位
                         }
                 articles.append(article_data)
+                logger.debug(f"解析文章: {article_data['title']}")
 
+            logger.info(f"成功解析 {len(articles)} 篇文章")
             return articles
 
         except Exception as e:

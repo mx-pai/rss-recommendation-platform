@@ -33,7 +33,8 @@ def content_source(
             category=source_data.category,
             is_active=True,
             fetch_frequency=source_data.fetch_frequency,
-            fetch_config=source_data.fetch_config
+            fetch_config=source_data.fetch_config,
+            user_id=current_user.id
             )
     db.add(db_source)
     db.commit()
@@ -137,6 +138,17 @@ async def fetch_service_content(
         current_user: User = Depends(get_current_user)
         ):
     """手动抓取指定内容"""
+    # 验证用户是否拥有该内容源
+    source = db.query(ContentSource).filter(
+            ContentSource.id == source_id,
+            ContentSource.user_id == current_user.id
+    ).first()
+    if not source:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="内容源不存在"
+                )
+
     fetch_service = FetchService()
     result = await fetch_service.fetch_source(source_id, db)
     return result
@@ -148,7 +160,7 @@ async def fetch_all_source(
         ):
     """抓取所有启用的内容源"""
     fetch_service = FetchService()
-    result = await fetch_service.fetch_all_active_sources(db)
+    result = await fetch_service.fetch_all_active_sources(db, current_user.id)
     return result
 
 

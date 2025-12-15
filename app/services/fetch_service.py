@@ -60,7 +60,7 @@ class FetchService:
                 article_url = rss_article.get('url', '')
                 if not article_url:
                     logger.warning(f"跳过无URL的文章: {rss_article.get('title', '')}")
-                    continue
+
 
                 try:
                     full_article_data = await self.web_crawler.crawl_webpage(article_url)
@@ -203,6 +203,7 @@ class FetchService:
                     author=article_data.get('author', '未知作者'),
                     published_at=article_data.get('published_at'),
                     source_id=source.id,
+                    user_id=source.user_id,
                     source_type=source.type,
                     is_read=False,
                     images=json.dumps(article_data.get('images', [])) if article_data.get('images') else None,
@@ -225,10 +226,13 @@ class FetchService:
             logger.error(f"保存文章失败：{str(e)}")
             db.rollback()
             return False
-    async def fetch_all_active_sources(self, db: Session) -> Dict:
+    async def fetch_all_active_sources(self, db: Session, user_id: int = None) -> Dict:
         """抓取所有活动的内容源"""
         try:
-            active_sources = db.query(ContentSource).filter(ContentSource.is_active == True).all()
+            query = db.query(ContentSource).filter(ContentSource.is_active == True)
+            if user_id is not None:
+                query = query.filter(ContentSource.user_id == user_id)
+            active_sources = query.all()
 
             results: List[Dict[str, Any]] = []
             for source in active_sources:

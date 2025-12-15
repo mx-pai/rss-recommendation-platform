@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import hash_password, verify_password, creste_access_token, verify_token
+from app.core.security import hash_password, verify_password, create_access_token, verify_token
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 from app.models.user import User
 
@@ -68,7 +68,7 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
                 detail="用户名或密码错误",
                 headers={"WWW-Authenticate": "Bearer"}
                 )
-    access_token = creste_access_token(data={"sub": user.username})
+    access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)

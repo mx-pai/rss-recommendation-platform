@@ -21,7 +21,16 @@ def create_article(
         current_user: User = Depends(get_current_user)
         ):
     """创建新文章"""
-    source = get_object_or_404(db, ContentSource, article_data.source_id, "内容源不存在")
+    source = db.query(ContentSource).filter(
+            ContentSource.id == article_data.source_id,
+            ContentSource.user_id == current_user.id
+    ).first()
+    if not source:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="内容源不存在"
+                )
+    
     db_article = Article(
             title=article_data.title,
             content=article_data.content,
@@ -29,7 +38,8 @@ def create_article(
             author=article_data.author,
             published_at=article_data.published_at,
             source_id=article_data.source_id,
-            source_type=article_data.source_type or source.type
+            source_type=article_data.source_type or source.type,
+            user_id=current_user.id
             )
     db.add(db_article)
     db.commit()
@@ -44,7 +54,15 @@ def get_article(
         current_user: User = Depends(get_current_user)
         ):
     """获取单个文章详情"""
-    article = get_object_or_404(db, Article, article_id, "文章不存在")
+    article = db.query(Article).filter(
+            Article.id == article_id,
+            Article.user_id == current_user.id
+    ).first()
+    if not article:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="文章不存在"
+                )
     return article
 
 
@@ -61,7 +79,9 @@ def get_articles(
         ):
     """获取文章列表，支持分页和筛选"""
     try:
-        query = db.query(Article).join(ContentSource, Article.source_id == ContentSource.id)
+        query = db.query(Article).join(ContentSource, Article.source_id == ContentSource.id).filter(
+                Article.user_id == current_user.id
+        )
 
         # 应用筛选条件
         if source_id is not None:
@@ -106,7 +126,15 @@ def update_article(
         current_user: User = Depends(get_current_user)
         ):
     """更新文章"""
-    article = get_object_or_404(db, Article, article_id, "文章不存在")
+    article = db.query(Article).filter(
+            Article.id == article_id,
+            Article.user_id == current_user.id
+    ).first()
+    if not article:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="文章不存在"
+                )
     update_data = article_data.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(article, field, value)
@@ -123,7 +151,15 @@ def delete_article(
         current_user: User = Depends(get_current_user)
         ):
     """删除文章"""
-    article = get_object_or_404(db, Article, article_id, "文章不存在")
+    article = db.query(Article).filter(
+            Article.id == article_id,
+            Article.user_id == current_user.id
+    ).first()
+    if not article:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="文章不存在"
+                )
     db.delete(article)
     db.commit()
     return {"message": "文章删除成功"}
@@ -135,7 +171,15 @@ def toggle_article_read_status(
         current_user: User = Depends(get_current_user)
         ):
     """切换文章阅读状态"""
-    article = get_object_or_404(db, Article, article_id, "文章不存在")
+    article = db.query(Article).filter(
+            Article.id == article_id,
+            Article.user_id == current_user.id
+    ).first()
+    if not article:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="文章不存在"
+                )
 
     article.is_read = not article.is_read
     db.commit()
