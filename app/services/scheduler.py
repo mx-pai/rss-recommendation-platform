@@ -1,6 +1,5 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.triggers.cron import CronTrigger
 from app.core.database import SessionLocal
 from app.models.content_source import ContentSource
 from app.services.fetch_service import FetchService

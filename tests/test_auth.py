@@ -1,7 +1,6 @@
 """
 用户认证相关的测试
 """
-import pytest
 from fastapi import status
 
 

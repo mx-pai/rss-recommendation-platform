@@ -1,12 +1,9 @@
-import asyncio
 from playwright.async_api import async_playwright
 import feedparser
 from bs4 import BeautifulSoup
-import feedparser
 from typing import Dict, Optional, List
 from datetime import datetime
 import logging
-import json
 from urllib.parse import urlparse
 import bleach
 import re

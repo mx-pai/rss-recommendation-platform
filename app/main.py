@@ -1,61 +1,57 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.core.database import engine
-from app.models import user, content_source, article
-from app.routers import auth
-from app.routers import sources
-from app.routers import articles
-from app.routers import admin
-from app.services.scheduler import scheduler_service
 import logging
 
-logging.basicConfig(
-        level=logging.INFO,
-        format="[%(levelname)s] %(name)s - %(message)s"
-        )
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+from app.core.database import engine
+from app.models import article, content_source, user
+from app.routers import admin, articles, auth, sources
+from app.services.scheduler import scheduler_service
+
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(name)s - %(message)s")
 
 # 数据库表创建
 user.Base.metadata.create_all(bind=engine)
 content_source.Base.metadata.create_all(bind=engine)
 article.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-        title=settings.app_name,
-        debug=settings.debug
-        )
+app = FastAPI(title=settings.app_name, debug=settings.debug)
 
 app.add_middleware(
-        CORSMiddleware,
-        allow_origins = ["*"],
-        allow_credentials = True,
-        allow_methods = ["*"],
-        allow_headers = ["*"],
-        )
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth.router)
 app.include_router(sources.router)
 app.include_router(articles.router)
 app.include_router(admin.router)
 
+
 @app.get("/")
 async def root():
     return {"message": "智能内容聚合平台API", "status": "running"}
+
 
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "database": "connected"}
 
+
 @app.get("/api/v1/status")
 async def api_status():
     return {
-            "api_version": "v1",
-            "status": "running",
-            "database": "PostgreSQL",
-            "cache": "Redis",
-            "scheduler": scheduler_service.get_status()["running"],
-            "models": ["User", "ContentSource", "Article"]
-            }
+        "api_version": "v1",
+        "status": "running",
+        "database": "PostgreSQL",
+        "cache": "Redis",
+        "scheduler": scheduler_service.get_status()["running"],
+        "models": ["User", "ContentSource", "Article"],
+    }
 
 
 @app.on_event("startup")
@@ -97,5 +93,3 @@ async def shutdown_event():
 
     logger.info("再见！")
     logger.info("=" * 60)
-
-
